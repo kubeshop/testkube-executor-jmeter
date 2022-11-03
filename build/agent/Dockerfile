@@ -7,7 +7,7 @@ ENV GOOS=linux
 
 RUN cd cmd/agent;go build -o /runner -mod mod -a .
 
-FROM alpine
+FROM justb4/jmeter
 RUN apk --no-cache add ca-certificates git
 WORKDIR /root/
 COPY --from=0 /runner /bin/runner
