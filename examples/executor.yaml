@@ -6,6 +6,6 @@ metadata:
 spec:
   features:
     - artifacts
-  image: kubeshop/testkube-jmeter-executor:dev-004
+  image: kubeshop/testkube-jmeter-executor:dev-008
   types:
     - jmeter/test

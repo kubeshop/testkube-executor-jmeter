@@ -37,6 +37,7 @@ func NewRunner() (*JMeterRunner, error) {
 	}
 
 	return &JMeterRunner{
+		Params:  params,
 		Fetcher: content.NewFetcher(""),
 		Scraper: scraper.NewMinioScraper(
 			params.Endpoint,
@@ -57,6 +58,14 @@ type JMeterRunner struct {
 }
 
 func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
+
+	output.PrintEvent(
+		"running with config",
+		"scraperEnabled", r.Params.ScrapperEnabled,
+		"dataDir", r.Params.Datadir,
+		"SSL", r.Params.Ssl,
+		"endpoint", r.Params.Endpoint,
+	)
 
 	secret.NewEnvManager().GetVars(execution.Variables)
 	path, err := r.Fetcher.Fetch(execution.Content)
@@ -109,7 +118,9 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		directories := []string{
 			reportPath,
 		}
+
 		err := r.Scraper.Scrape(execution.Id, directories)
+		output.PrintEvent("scraped artifacts", directories, "error", err)
 		if err != nil {
 			return executionResult.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
 		}
@@ -135,6 +146,10 @@ func MapResultsToExecutionResults(out []byte, results parser.Results) (result te
 				Name:     r.Label,
 				Duration: r.Duration.String(),
 				Status:   MapStatus(r),
+				AssertionResults: []testkube.AssertionResult{{
+					Name:   r.Label,
+					Status: MapStatus(r),
+				}},
 			})
 	}
 
