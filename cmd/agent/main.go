@@ -3,10 +3,15 @@ package main
 import (
 	"os"
 
-	"github.com/kubeshop/testkube-executor-template/pkg/runner"
+	"github.com/kubeshop/testkube-executor-jmeter/pkg/runner"
 	"github.com/kubeshop/testkube/pkg/executor/agent"
+	"github.com/kubeshop/testkube/pkg/ui"
 )
 
 func main() {
-	agent.Run(runner.NewRunner(), os.Args)
+	runner, err := runner.NewRunner()
+	if err != nil {
+		ui.Err(err)
+	}
+	agent.Run(runner, os.Args)
 }
