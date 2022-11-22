@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/kubeshop/testkube-executor-jmeter/pkg/parser"
@@ -88,10 +87,12 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	runPath := r.Params.Datadir
 	reportPath := filepath.Join(runPath, "report.jtl")
-	args := []string{"-n", "-t", path, "-l", reportPath, strings.Join(params, " ")}
+	args := []string{"-n", "-t", path, "-l", reportPath}
+	args = append(args, params...)
 
 	// append args from execution
 	args = append(args, execution.Args...)
+	output.PrintEvent("using arguments", fmt.Sprintf("%v", args))
 
 	envManager := secret.NewEnvManagerWithVars(execution.Variables)
 	envManager.GetVars(execution.Variables)
@@ -103,6 +104,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 	out = envManager.Obfuscate(out)
 
+	output.PrintEvent("getting report")
 	f, err := os.Open(reportPath)
 	if err != nil {
 		return result.WithErrors(fmt.Errorf("getting jtl report error: %w", err)), nil
@@ -114,6 +116,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// scrape artifacts first even if there are errors above
 	// Basic implementation will scrape report
 	// TODO add additional artifacts to scrape
+	output.PrintEvent("scraping artifacts in ", reportPath)
 	if r.Params.ScrapperEnabled {
 		directories := []string{
 			reportPath,
