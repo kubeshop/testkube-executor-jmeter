@@ -21,6 +21,9 @@ install-swagger-codegen-mac:
 test: 
 	go test ./... -cover
 
+integration-test:
+	go test --tags=integration -v ./...
+
 test-e2e:
 	go test --tags=e2e -v ./test/e2e
 
