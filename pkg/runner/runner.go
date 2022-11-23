@@ -82,7 +82,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// compose parameters passed to JMeter with -J
 	params := make([]string, 0, len(execution.Variables))
 	for _, value := range execution.Variables {
-		params = append(params, fmt.Sprintf(" -J%s=%s", value.Name, value.Value))
+		params = append(params, fmt.Sprintf("-J%s=%s", value.Name, value.Value))
 	}
 
 	runPath := r.Params.Datadir
