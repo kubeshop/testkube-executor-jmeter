@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/csv"
+	"errors"
 	"io"
 	"log"
 	"strconv"
@@ -56,7 +57,7 @@ func CSVToMap(reader io.Reader) []map[string]string {
 	var header []string
 	for {
 		record, err := r.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
