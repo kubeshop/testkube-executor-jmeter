@@ -1,0 +1,11 @@
+apiVersion: executor.testkube.io/v1
+kind: Executor
+metadata:
+  name: jmeter-executor-dev
+  namespace: thor-test
+spec:
+  features:
+  - artifacts
+  image: ghcr.io/f-helm/testkube-executor-jmeter:latest
+  types:
+  - jmeter-dev/test
