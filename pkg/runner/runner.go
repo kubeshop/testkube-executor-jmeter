@@ -11,6 +11,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
 	"github.com/kubeshop/testkube/pkg/executor/output"
+	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
 	"github.com/kubeshop/testkube/pkg/executor/secret"
 )
@@ -70,7 +71,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	gitUsername := os.Getenv("RUNNER_GITUSERNAME")
 	gitToken := os.Getenv("RUNNER_GITTOKEN")
-	if gitUsername != "" && gitToken != "" {
+	if gitUsername != "" || gitToken != "" {
 		if execution.Content != nil && execution.Content.Repository != nil {
 			execution.Content.Repository.Username = gitUsername
 			execution.Content.Repository.Token = gitToken
@@ -96,6 +97,10 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	runPath := r.Params.Datadir
+	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
+		runPath = filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.WorkingDir)
+	}
+
 	reportPath := filepath.Join(runPath, "report.jtl")
 	args := []string{"-n", "-t", path, "-l", reportPath}
 	args = append(args, params...)
@@ -175,4 +180,9 @@ func MapStatus(result parser.Result) string {
 	}
 
 	return string(testkube.FAILED_ExecutionStatus)
+}
+
+// GetType returns runner type
+func (r *JMeterRunner) GetType() runner.Type {
+	return runner.TypeMain
 }
