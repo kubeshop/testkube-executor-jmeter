@@ -67,7 +67,8 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		"endpoint", r.Params.Endpoint,
 	)
 
-	secret.NewEnvManager().GetVars(execution.Variables)
+	envManager := secret.NewEnvManagerWithVars(execution.Variables)
+	envManager.GetVars(envManager.Variables)
 
 	gitUsername := os.Getenv("RUNNER_GITUSERNAME")
 	gitToken := os.Getenv("RUNNER_GITTOKEN")
@@ -91,8 +92,8 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// compose parameters passed to JMeter with -J
-	params := make([]string, 0, len(execution.Variables))
-	for _, value := range execution.Variables {
+	params := make([]string, 0, len(envManager.Variables))
+	for _, value := range envManager.Variables {
 		params = append(params, fmt.Sprintf("-J%s=%s", value.Name, value.Value))
 	}
 
@@ -108,9 +109,6 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// append args from execution
 	args = append(args, execution.Args...)
 	output.PrintEvent("using arguments", fmt.Sprintf("%v", args))
-
-	envManager := secret.NewEnvManagerWithVars(execution.Variables)
-	envManager.GetVars(execution.Variables)
 
 	// run JMeter inside repo directory ignore execution error in case of failed test
 	out, err := executor.Run(runPath, "jmeter", envManager, args...)
