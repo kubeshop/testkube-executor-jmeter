@@ -5,35 +5,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kelseyhightower/envconfig"
 	"github.com/kubeshop/testkube-executor-jmeter/pkg/parser"
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
+	"github.com/kubeshop/testkube/pkg/envs"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
 	"github.com/kubeshop/testkube/pkg/executor/secret"
+	"github.com/kubeshop/testkube/pkg/ui"
 )
 
-type Params struct {
-	Endpoint        string // RUNNER_ENDPOINT
-	AccessKeyID     string // RUNNER_ACCESSKEYID
-	SecretAccessKey string // RUNNER_SECRETACCESSKEY
-	Location        string // RUNNER_LOCATION
-	Token           string // RUNNER_TOKEN
-	Ssl             bool   // RUNNER_SSL
-	ScrapperEnabled bool   // RUNNER_SCRAPPERENABLED
-	GitUsername     string // RUNNER_GITUSERNAME
-	GitToken        string // RUNNER_GITTOKEN
-	Datadir         string // RUNNER_DATADIR
-}
-
 func NewRunner() (*JMeterRunner, error) {
-	var params Params
-	err := envconfig.Process("runner", &params)
+	output.PrintLog(fmt.Sprintf("%s Preparing test runner", ui.IconTruck))
+	params, err := envs.LoadTestkubeVariables()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not initialize JMeter runner variables: %w", err)
 	}
 
 	return &JMeterRunner{
@@ -50,9 +38,9 @@ func NewRunner() (*JMeterRunner, error) {
 	}, nil
 }
 
-// ExampleRunner for jmeter - change me to some valid runner
+// JMeterRunner runner
 type JMeterRunner struct {
-	Params  Params
+	Params  envs.Params
 	Fetcher content.ContentFetcher
 	Scraper scraper.Scraper
 }
@@ -60,9 +48,9 @@ type JMeterRunner struct {
 func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
 
 	output.PrintEvent(
-		"running with config",
+		fmt.Sprintf("%s Running with config", ui.IconTruck),
 		"scraperEnabled", r.Params.ScrapperEnabled,
-		"dataDir", r.Params.Datadir,
+		"dataDir", r.Params.DataDir,
 		"SSL", r.Params.Ssl,
 		"endpoint", r.Params.Endpoint,
 	)
@@ -70,8 +58,8 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	envManager := secret.NewEnvManagerWithVars(execution.Variables)
 	envManager.GetVars(envManager.Variables)
 
-	gitUsername := os.Getenv("RUNNER_GITUSERNAME")
-	gitToken := os.Getenv("RUNNER_GITTOKEN")
+	gitUsername := r.Params.GitUsername
+	gitToken := r.Params.GitToken
 	if gitUsername != "" || gitToken != "" {
 		if execution.Content != nil && execution.Content.Repository != nil {
 			execution.Content.Repository.Username = gitUsername
@@ -84,11 +72,10 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
-	output.PrintEvent("created content path", path)
-
 	// Only file based tests in first iteration
 	if execution.Content.IsDir() || !execution.Content.IsFile() {
-		return result, fmt.Errorf("unsupported content type use file based content")
+		output.PrintLog(fmt.Sprintf("%s Unsupported content type, use file based content", ui.IconCross))
+		return result, fmt.Errorf("unsupported content type, use file based content")
 	}
 
 	// compose parameters passed to JMeter with -J
@@ -97,9 +84,9 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		params = append(params, fmt.Sprintf("-J%s=%s", value.Name, value.Value))
 	}
 
-	runPath := r.Params.Datadir
+	runPath := r.Params.DataDir
 	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
-		runPath = filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.WorkingDir)
+		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
 	}
 
 	reportPath := filepath.Join(runPath, "report.jtl")
@@ -108,7 +95,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// append args from execution
 	args = append(args, execution.Args...)
-	output.PrintEvent("using arguments", fmt.Sprintf("%v", args))
+	output.PrintLog(fmt.Sprintf("%s Using arguments: %v", ui.IconWorld, args))
 
 	// run JMeter inside repo directory ignore execution error in case of failed test
 	out, err := executor.Run(runPath, "jmeter", envManager, args...)
@@ -117,7 +104,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 	out = envManager.Obfuscate(out)
 
-	output.PrintEvent("getting report")
+	output.PrintLog(fmt.Sprintf("%s Getting report %s", ui.IconFile, reportPath))
 	f, err := os.Open(reportPath)
 	if err != nil {
 		return result.WithErrors(fmt.Errorf("getting jtl report error: %w", err)), nil
@@ -125,18 +112,17 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	results := parser.Parse(f)
 	executionResult := MapResultsToExecutionResults(out, results)
+	output.PrintLog(fmt.Sprintf("%s Mapped JMeter results to Execution Results...", ui.IconCheckMark))
 
 	// scrape artifacts first even if there are errors above
 	// Basic implementation will scrape report
 	// TODO add additional artifacts to scrape
-	output.PrintEvent("scraping artifacts in ", reportPath)
 	if r.Params.ScrapperEnabled {
 		directories := []string{
 			reportPath,
 		}
 
 		err := r.Scraper.Scrape(execution.Id, directories)
-		output.PrintEvent("scraped artifacts", directories, "error", err)
 		if err != nil {
 			return executionResult.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
 		}
