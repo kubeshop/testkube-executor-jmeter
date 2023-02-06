@@ -33,6 +33,7 @@ func NewRunner() (*JMeterRunner, error) {
 			params.SecretAccessKey,
 			params.Location,
 			params.Token,
+			params.Bucket,
 			params.Ssl,
 		),
 	}, nil
@@ -100,14 +101,14 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// run JMeter inside repo directory ignore execution error in case of failed test
 	out, err := executor.Run(runPath, "jmeter", envManager, args...)
 	if err != nil {
-		return result.WithErrors(fmt.Errorf("jmeter run error: %w", err)), nil
+		return *result.WithErrors(fmt.Errorf("jmeter run error: %w", err)), nil
 	}
 	out = envManager.Obfuscate(out)
 
 	output.PrintLog(fmt.Sprintf("%s Getting report %s", ui.IconFile, reportPath))
 	f, err := os.Open(reportPath)
 	if err != nil {
-		return result.WithErrors(fmt.Errorf("getting jtl report error: %w", err)), nil
+		return *result.WithErrors(fmt.Errorf("getting jtl report error: %w", err)), nil
 	}
 
 	results := parser.Parse(f)
@@ -124,7 +125,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 		err := r.Scraper.Scrape(execution.Id, directories)
 		if err != nil {
-			return executionResult.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
+			return *executionResult.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
 		}
 	}
 
