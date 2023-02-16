@@ -75,8 +75,12 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// Only file based tests in first iteration
 	if execution.Content.IsDir() || !execution.Content.IsFile() {
-		output.PrintLog(fmt.Sprintf("%s Unsupported content type, use file based content", ui.IconCross))
-		return result, fmt.Errorf("unsupported content type, use file based content")
+		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find jmx file in %s", ui.IconWorld, path))
+		path, err = r.FindJmxFile(path)
+		if err != nil || path == "" {
+			output.PrintLog(fmt.Sprintf("%s Could not find jmx file in directory", ui.IconCross))
+			return result, err
+		}
 	}
 
 	// compose parameters passed to JMeter with -J
@@ -130,6 +134,23 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	return executionResult, nil
+}
+
+func (r *JMeterRunner) FindJmxFile(path string) (string, error) {
+	result := ""
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			output.PrintLog(fmt.Sprintf("%s Error while walking directory: %s", ui.IconCross, err))
+			return err
+		}
+
+		if filepath.Ext(path) == ".jmx" {
+			output.PrintLog(fmt.Sprintf("%s Found jmx file: %s", ui.IconCheckMark, path))
+			result = path
+		}
+		return nil
+	})
+	return result, err
 }
 
 func MapResultsToExecutionResults(out []byte, results parser.Results) (result testkube.ExecutionResult) {
