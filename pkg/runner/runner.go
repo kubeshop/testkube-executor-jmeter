@@ -75,10 +75,12 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	// Only file based tests in first iteration
 	if execution.Content.IsDir() || !execution.Content.IsFile() {
-		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find jmx file in %s", ui.IconWorld, path))
-		path, err = r.FindJmxFile(path)
+		scriptName := execution.Args[len(execution.Args)-1]
+		execution.Args = execution.Args[:len(execution.Args)-1]
+		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find file from the last executor argument %s in directory %s", ui.IconWorld, scriptName, path))
+		path, err = r.FindScriptFile(path, scriptName)
 		if err != nil || path == "" {
-			output.PrintLog(fmt.Sprintf("%s Could not find jmx file in directory", ui.IconCross))
+			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory", scriptName, ui.IconCross))
 			return result, err
 		}
 	}
@@ -136,7 +138,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	return executionResult, nil
 }
 
-func (r *JMeterRunner) FindJmxFile(path string) (string, error) {
+func (r *JMeterRunner) FindScriptFile(path, scriptName string) (string, error) {
 	result := ""
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -144,8 +146,8 @@ func (r *JMeterRunner) FindJmxFile(path string) (string, error) {
 			return err
 		}
 
-		if filepath.Ext(path) == ".jmx" {
-			output.PrintLog(fmt.Sprintf("%s Found jmx file: %s", ui.IconCheckMark, path))
+		if filepath.Ext(path) == scriptName {
+			output.PrintLog(fmt.Sprintf("%s Found file to run: %s", ui.IconCheckMark, path))
 			result = path
 		}
 		return nil
