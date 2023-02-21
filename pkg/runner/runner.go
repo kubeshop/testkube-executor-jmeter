@@ -81,10 +81,10 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 		// sanity checking for test script
 		scriptFile := filepath.Join(path, scriptName)
-		fileInfo, err := os.Stat(scriptFile)
-		if errors.Is(err, os.ErrNotExist) || fileInfo.IsDir() {
-			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory", ui.IconCross, scriptName))
-			return *result.Err(fmt.Errorf("could not find file %s in the directory", scriptName)), nil
+		fileInfo, errFile := os.Stat(scriptFile)
+		if errors.Is(errFile, os.ErrNotExist) || fileInfo.IsDir() {
+			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory, error: %s", ui.IconCross, scriptName, errFile))
+			return *result.Err(fmt.Errorf("could not find file %s in the directory: %w", scriptName, errFile)), nil
 		}
 		path = scriptFile
 	}
