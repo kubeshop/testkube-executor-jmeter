@@ -11,10 +11,10 @@ import (
 	"github.com/kubeshop/testkube/pkg/envs"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
+	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
-	"github.com/kubeshop/testkube/pkg/executor/secret"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
@@ -57,8 +57,8 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		"endpoint", r.Params.Endpoint,
 	)
 
-	envManager := secret.NewEnvManagerWithVars(execution.Variables)
-	envManager.GetVars(envManager.Variables)
+	envManager := env.NewManagerWithVars(execution.Variables)
+	envManager.GetReferenceVars(envManager.Variables)
 
 	gitUsername := r.Params.GitUsername
 	gitToken := r.Params.GitToken
@@ -113,7 +113,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	if err != nil {
 		return *result.WithErrors(fmt.Errorf("jmeter run error: %w", err)), nil
 	}
-	out = envManager.Obfuscate(out)
+	out = envManager.ObfuscateSecrets(out)
 
 	output.PrintLog(fmt.Sprintf("%s Getting report %s", ui.IconFile, reportPath))
 	f, err := os.Open(reportPath)
