@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,16 +74,19 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
-	// Only file based tests in first iteration
 	if execution.Content.IsDir() || !execution.Content.IsFile() {
 		scriptName := execution.Args[len(execution.Args)-1]
 		execution.Args = execution.Args[:len(execution.Args)-1]
 		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find file from the last executor argument %s in directory %s", ui.IconWorld, scriptName, path))
-		path, err = r.FindScriptFile(path, scriptName)
-		if err != nil || path == "" {
-			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory", scriptName, ui.IconCross))
-			return result, err
+
+		// sanity checking for test script
+		scriptFile := filepath.Join(path, scriptName)
+		fileInfo, err := os.Stat(scriptFile)
+		if errors.Is(err, os.ErrNotExist) || fileInfo.IsDir() {
+			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory", ui.IconCross, scriptName))
+			return *result.Err(fmt.Errorf("could not find file %s in the directory", scriptName)), nil
 		}
+		path = scriptFile
 	}
 
 	// compose parameters passed to JMeter with -J
@@ -136,23 +140,6 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	return executionResult, nil
-}
-
-func (r *JMeterRunner) FindScriptFile(path, scriptName string) (string, error) {
-	result := ""
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			output.PrintLog(fmt.Sprintf("%s Error while walking directory: %s", ui.IconCross, err))
-			return err
-		}
-
-		if filepath.Ext(path) == scriptName {
-			output.PrintLog(fmt.Sprintf("%s Found file to run: %s", ui.IconCheckMark, path))
-			result = path
-		}
-		return nil
-	})
-	return result, err
 }
 
 func MapResultsToExecutionResults(out []byte, results parser.Results) (result testkube.ExecutionResult) {
