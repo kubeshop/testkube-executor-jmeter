@@ -74,7 +74,17 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		return result, err
 	}
 
-	if execution.Content.IsDir() || !execution.Content.IsFile() {
+	isDir := false
+	if execution.Content.Repository != nil {
+		contentType, err := r.Fetcher.CalculateGitContentType(*execution.Content.Repository)
+		if err != nil {
+			return result, err
+		}
+
+		isDir = contentType == string(testkube.TestContentTypeGitDir)
+	}
+
+	if isDir {
 		scriptName := execution.Args[len(execution.Args)-1]
 		execution.Args = execution.Args[:len(execution.Args)-1]
 		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find file from the last executor argument %s in directory %s", ui.IconWorld, scriptName, path))
