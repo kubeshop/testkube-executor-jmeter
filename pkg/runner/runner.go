@@ -75,16 +75,16 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	isDir := false
-	if execution.Content.Repository != nil {
-		/*		contentType, err = r.Fetcher.CalculateGitContentType(*execution.Content.Repository)
-				if err != nil {
-					return result, err
-				}
+	/*	if execution.Content.Repository != nil {
+					contentType, err = r.Fetcher.CalculateGitContentType(*execution.Content.Repository)
+					if err != nil {
+						return result, err
+					}
 
-				isDir = contentType == string(testkube.TestContentTypeGitDir)
-		*/
-	}
+					isDir = contentType == string(testkube.TestContentTypeGitDir)
 
+		}
+	*/
 	if isDir {
 		scriptName := execution.Args[len(execution.Args)-1]
 		execution.Args = execution.Args[:len(execution.Args)-1]
