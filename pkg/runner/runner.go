@@ -81,11 +81,20 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	if fileInfo.IsDir() {
 		scriptName := execution.Args[len(execution.Args)-1]
+		if execution.Content != nil && execution.Content.Repository != nil {
+			scriptName = filepath.Join(execution.Content.Repository.Path, scriptName)
+		}
+
 		execution.Args = execution.Args[:len(execution.Args)-1]
 		output.PrintLog(fmt.Sprintf("%s It is a directory test - trying to find file from the last executor argument %s in directory %s", ui.IconWorld, scriptName, path))
 
+		workingDir := ""
+		if execution.Content != nil && execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
+			workingDir = execution.Content.Repository.WorkingDir
+		}
+
 		// sanity checking for test script
-		scriptFile := filepath.Join(path, scriptName)
+		scriptFile := filepath.Join(path, workingDir, scriptName)
 		fileInfo, errFile := os.Stat(scriptFile)
 		if errors.Is(errFile, os.ErrNotExist) || fileInfo.IsDir() {
 			output.PrintLog(fmt.Sprintf("%s Could not find file %s in the directory, error: %s", ui.IconCross, scriptName, errFile))
