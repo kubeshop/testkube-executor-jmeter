@@ -70,7 +70,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	// clean up, we don't use init container data
-	os.RemoveAll(filepath.Join(r.params.DataDir, "repo"))
+	os.RemoveAll(filepath.Join(r.Params.DataDir, "repo"))
 	path, err := r.Fetcher.Fetch(execution.Content)
 	if err != nil {
 		return result, err
