@@ -27,7 +27,7 @@ func NewRunner() (*JMeterRunner, error) {
 
 	return &JMeterRunner{
 		Params:  params,
-		Fetcher: content.NewFetcher(""),
+		Fetcher: content.NewFetcher(os.Getenv("RUNNER_DATADIR")),
 		Scraper: scraper.NewMinioScraper(
 			params.Endpoint,
 			params.AccessKeyID,
