@@ -21,7 +21,7 @@ func TestRun(t *testing.T) {
 
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
-		execution.Content = &testkube.NewStringTestContent("")
+		execution.Content = testkube.NewStringTestContent("")
 		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Variables = map[string]testkube.Variable{}
@@ -42,7 +42,7 @@ func TestRun(t *testing.T) {
 
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
-		execution.Content = &testkube.NewStringTestContent("")
+		execution.Content = testkube.NewStringTestContent("")
 		writeTestContent(t, tempDir, "../../examples/kubeshop_failed.jmx")
 
 		execution.Variables = map[string]testkube.Variable{}
@@ -63,7 +63,7 @@ func TestRun(t *testing.T) {
 
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
-		execution.Content = &testkube.NewStringTestContent("")
+		execution.Content = testkube.NewStringTestContent("")
 		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Variables = map[string]testkube.Variable{
@@ -90,7 +90,7 @@ func TestRun(t *testing.T) {
 
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
-		execution.Content = &testkube.NewStringTestContent("")
+		execution.Content = testkube.NewStringTestContent("")
 		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Args = []string{"-Jthreads", "10", "-Jrampup", "0", "-Jloopcount", "1", "-Jip", "sampleip", "-Jport", "1234"}
