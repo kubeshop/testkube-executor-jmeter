@@ -33,7 +33,7 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, testkube.ExecutionStatusPassed, result.Status)
 		assert.Len(t, result.Steps, 1)
 
-		err = cleanup()
+		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
 	t.Run("run failing jmeter test", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, testkube.ExecutionStatusFailed, result.Status)
 		assert.Len(t, result.Steps, 1)
 
-		err = cleanup()
+		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
 	t.Run("run successful jmeter test with variables", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, testkube.ExecutionStatusPassed, result.Status)
 		assert.Len(t, result.Steps, 1)
 
-		err = cleanup()
+		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
 	t.Run("run successful jmeter test with arguments", func(t *testing.T) {
@@ -102,18 +102,18 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, testkube.ExecutionStatusPassed, result.Status)
 		assert.Len(t, result.Steps, 1)
 
-		err = cleanup()
+		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
 
 }
 
-func cleanup() error {
-	err := os.Remove("jmeter.log")
+func cleanup(tempDir string) error {
+	err := os.Remove(filepath.Join(tempDir, "jmeter.log"))
 	if err != nil {
 		return err
 	}
-	return os.Remove("report.jtl")
+	return os.Remove(filepath.Join(tempDir, "report.jtl"))
 }
 
 func writeTestContent(t *testing.T, dir string, testScript string) {
