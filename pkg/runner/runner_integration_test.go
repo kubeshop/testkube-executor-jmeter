@@ -4,6 +4,7 @@ package runner
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
@@ -21,7 +22,7 @@ func TestRun(t *testing.T) {
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
 		execution.Content = &testkube.NewStringTestContent("")
-		wrtiteTestContent(t, tempDir, "../../examples/kubeshop.jmx")
+		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Variables = map[string]testkube.Variable{}
 
@@ -42,7 +43,7 @@ func TestRun(t *testing.T) {
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
 		execution.Content = &testkube.NewStringTestContent("")
-		wrtiteTestContent(t, tempDir, "../../examples/kubeshop_failed.jmx")
+		writeTestContent(t, tempDir, "../../examples/kubeshop_failed.jmx")
 
 		execution.Variables = map[string]testkube.Variable{}
 
@@ -63,7 +64,7 @@ func TestRun(t *testing.T) {
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
 		execution.Content = &testkube.NewStringTestContent("")
-		wrtiteTestContent(t, tempDir, "../../examples/kubeshop.jmx")
+		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Variables = map[string]testkube.Variable{
 			"threads":   {Name: "threads", Value: "10", Type_: testkube.VariableTypeBasic},
@@ -90,7 +91,7 @@ func TestRun(t *testing.T) {
 		execution := testkube.NewQueuedExecution()
 		execution.TestType = "jmeter/test"
 		execution.Content = &testkube.NewStringTestContent("")
-		wrtiteTestContent(t, tempDir, "../../examples/kubeshop.jmx")
+		writeTestContent(t, tempDir, "../../examples/kubeshop.jmx")
 
 		execution.Args = []string{"-Jthreads", "10", "-Jrampup", "0", "-Jloopcount", "1", "-Jip", "sampleip", "-Jport", "1234"}
 
