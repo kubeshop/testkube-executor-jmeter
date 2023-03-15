@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
-	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
