@@ -3,10 +3,10 @@ package runner
 import (
 	"context"
 	"fmt"
-	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"github.com/kubeshop/testkube-executor-jmeter/pkg/parser"
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
@@ -15,6 +15,7 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
+	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
@@ -127,12 +128,12 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// clean output directory it already exists, only useful for local development
 	_, err = os.Stat(outputDir)
 	if err == nil {
-		if err := os.RemoveAll(outputDir); err != nil {
+		if err = os.RemoveAll(outputDir); err != nil {
 			output.PrintLog(fmt.Sprintf("%s Failed to clean output directory %s", ui.IconWarning, outputDir))
 		}
 	}
 	// recreate output directory with wide permissions so JMeter can create report files
-	if err := os.Mkdir(outputDir, 0777); err != nil {
+	if err = os.Mkdir(outputDir, 0777); err != nil {
 		return *result.Err(errors.Errorf("could not create directory %s: %v", runPath, err)), nil
 	}
 
