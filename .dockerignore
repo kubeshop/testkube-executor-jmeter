@@ -1,0 +1,6 @@
+pkg/
+examples/
+temp/
+data/
+cmd/
+.github/
