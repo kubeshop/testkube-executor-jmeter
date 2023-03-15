@@ -12,6 +12,8 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Parallel()
+
 	tempDir := os.TempDir()
 	os.Setenv("RUNNER_DATADIR", tempDir)
 
@@ -36,6 +38,7 @@ func TestRun(t *testing.T) {
 		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
+
 	t.Run("run failing jmeter test", func(t *testing.T) {
 		runner, err := NewRunner()
 		assert.NoError(t, err)
@@ -57,6 +60,7 @@ func TestRun(t *testing.T) {
 		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
+
 	t.Run("run successful jmeter test with variables", func(t *testing.T) {
 		runner, err := NewRunner()
 		assert.NoError(t, err)
@@ -84,6 +88,7 @@ func TestRun(t *testing.T) {
 		err = cleanup(tempDir)
 		assert.NoError(t, err)
 	})
+
 	t.Run("run successful jmeter test with arguments", func(t *testing.T) {
 		runner, err := NewRunner()
 		assert.NoError(t, err)
@@ -109,11 +114,7 @@ func TestRun(t *testing.T) {
 }
 
 func cleanup(tempDir string) error {
-	err := os.Remove(filepath.Join(tempDir, "jmeter.log"))
-	if err != nil {
-		return err
-	}
-	return os.Remove(filepath.Join(tempDir, "report.jtl"))
+	return os.RemoveAll(filepath.Join(tempDir, "output"))
 }
 
 func writeTestContent(t *testing.T, dir string, testScript string) {

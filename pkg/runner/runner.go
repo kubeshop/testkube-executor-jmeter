@@ -1,8 +1,17 @@
 package runner
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	cloudagent "github.com/kubeshop/testkube/pkg/agent"
+	"github.com/kubeshop/testkube/pkg/cloud"
+	cloudscraper "github.com/kubeshop/testkube/pkg/cloud/data/artifact"
+	cloudexecutor "github.com/kubeshop/testkube/pkg/cloud/data/executor"
+	"github.com/kubeshop/testkube/pkg/executor/scraper"
+	"github.com/kubeshop/testkube/pkg/filesystem"
+	"github.com/kubeshop/testkube/pkg/log"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
 
@@ -13,7 +22,6 @@ import (
 	"github.com/kubeshop/testkube/pkg/executor/env"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
-	"github.com/kubeshop/testkube/pkg/executor/scraper"
 	"github.com/kubeshop/testkube/pkg/ui"
 )
 
@@ -24,24 +32,33 @@ func NewRunner() (*JMeterRunner, error) {
 		return nil, fmt.Errorf("could not initialize JMeter runner variables: %w", err)
 	}
 
-	return &JMeterRunner{
+	r := &JMeterRunner{
 		Params: params,
-		Scraper: scraper.NewMinioScraper(
-			params.Endpoint,
-			params.AccessKeyID,
-			params.SecretAccessKey,
-			params.Location,
-			params.Token,
-			params.Bucket,
-			params.Ssl,
-		),
-	}, nil
+	}
+
+	if params.CloudMode {
+		grpcConn, err := cloudagent.NewGRPCConnection(
+			context.Background(),
+			params.CloudAPITLSInsecure,
+			params.CloudAPIURL,
+			log.DefaultLogger,
+		)
+		if err != nil {
+			return nil, errors.Errorf("error establishing gRPC connection with cloud API: %v", err)
+		}
+		grpcClient := cloud.NewTestKubeCloudAPIClient(grpcConn)
+		r.GRPCConn = grpcConn
+		r.CloudClient = grpcClient
+	}
+
+	return r, nil
 }
 
 // JMeterRunner runner
 type JMeterRunner struct {
-	Params  envs.Params
-	Scraper scraper.Scraper
+	Params      envs.Params
+	GRPCConn    *grpc.ClientConn
+	CloudClient cloud.TestKubeCloudAPIClient
 }
 
 func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
@@ -68,16 +85,19 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 
 	path := ""
 	workingDir := ""
+	basePath, _ := filepath.Abs(r.Params.DataDir)
 	if execution.Content != nil {
-		if execution.Content.Type_ == string(testkube.TestContentTypeString) ||
-			execution.Content.Type_ == string(testkube.TestContentTypeFileURI) {
-			path = filepath.Join(r.Params.DataDir, "test-content")
+		isStringContentType := execution.Content.Type_ == string(testkube.TestContentTypeString)
+		isFileURIContentType := execution.Content.Type_ == string(testkube.TestContentTypeFileURI)
+		if isStringContentType || isFileURIContentType {
+			path = filepath.Join(basePath, "test-content")
 		}
 
-		if execution.Content.Type_ == string(testkube.TestContentTypeGitFile) ||
-			execution.Content.Type_ == string(testkube.TestContentTypeGitDir) ||
-			execution.Content.Type_ == string(testkube.TestContentTypeGit) {
-			path = filepath.Join(r.Params.DataDir, "repo")
+		isGitFileContentType := execution.Content.Type_ == string(testkube.TestContentTypeGitFile)
+		isGitDirContentType := execution.Content.Type_ == string(testkube.TestContentTypeGitDir)
+		isGitContentType := execution.Content.Type_ == string(testkube.TestContentTypeGit)
+		if isGitFileContentType || isGitDirContentType || isGitContentType {
+			path = filepath.Join(basePath, "repo")
 			if execution.Content.Repository != nil {
 				path = filepath.Join(path, execution.Content.Repository.Path)
 				workingDir = execution.Content.Repository.WorkingDir
@@ -118,13 +138,27 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 		params = append(params, fmt.Sprintf("-J%s=%s", value.Name, value.Value))
 	}
 
-	runPath := r.Params.DataDir
+	runPath := basePath
 	if workingDir != "" {
-		runPath = filepath.Join(r.Params.DataDir, "repo", workingDir)
+		runPath = filepath.Join(basePath, "repo", workingDir)
 	}
 
-	reportPath := filepath.Join(runPath, "report.jtl")
-	args := []string{"-n", "-t", path, "-l", reportPath}
+	outputDir := filepath.Join(runPath, "output")
+	// clean output directory it already exists, only useful for local development
+	_, err = os.Stat(outputDir)
+	if err == nil {
+		if err := os.RemoveAll(outputDir); err != nil {
+			output.PrintLog(fmt.Sprintf("%s Failed to clean output directory %s", ui.IconWarning, outputDir))
+		}
+	}
+	// recreate output directory with wide permissions so JMeter can create report files
+	if err := os.Mkdir(outputDir, 0777); err != nil {
+		return *result.Err(fmt.Errorf("could not create directory %s: %w", runPath, err)), nil
+	}
+
+	jtlPath := filepath.Join(outputDir, "report.jtl")
+	reportPath := filepath.Join(outputDir, "report")
+	args := []string{"-n", "-t", path, "-l", jtlPath, "-e", "-o", reportPath}
 	args = append(args, params...)
 
 	// append args from execution
@@ -138,8 +172,8 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 	out = envManager.ObfuscateSecrets(out)
 
-	output.PrintLog(fmt.Sprintf("%s Getting report %s", ui.IconFile, reportPath))
-	f, err := os.Open(reportPath)
+	output.PrintLog(fmt.Sprintf("%s Getting report %s", ui.IconFile, jtlPath))
+	f, err := os.Open(jtlPath)
 	if err != nil {
 		return *result.WithErrors(fmt.Errorf("getting jtl report error: %w", err)), nil
 	}
@@ -153,16 +187,56 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	// TODO add additional artifacts to scrape
 	if r.Params.ScrapperEnabled {
 		directories := []string{
-			reportPath,
+			outputDir,
 		}
 
-		err := r.Scraper.Scrape(execution.Id, directories)
-		if err != nil {
+		output.PrintLog(fmt.Sprintf("Scraping directories: %v", directories))
+
+		if err := r.scrape(context.Background(), directories, execution); err != nil {
 			return *executionResult.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
 		}
 	}
 
 	return executionResult, nil
+}
+
+func (r *JMeterRunner) scrape(ctx context.Context, dirs []string, execution testkube.Execution) (err error) {
+	if !r.Params.ScrapperEnabled {
+		return nil
+	}
+
+	output.PrintLog(fmt.Sprintf("%s Extracting artifacts from %s using filesystem extractor", ui.IconCheckMark, dirs))
+	extractor := scraper.NewFilesystemExtractor(dirs, filesystem.NewOSFileSystem())
+	var loader scraper.Uploader
+	var meta map[string]any
+	if r.Params.CloudMode {
+		output.PrintLog(fmt.Sprintf("%s Uploading artifacts using Cloud uploader", ui.IconCheckMark))
+		meta = cloudscraper.ExtractCloudLoaderMeta(execution)
+		cloudExecutor := cloudexecutor.NewCloudGRPCExecutor(r.CloudClient, r.Params.CloudAPIKey)
+		loader = cloudscraper.NewCloudUploader(cloudExecutor)
+	} else {
+		output.PrintLog(fmt.Sprintf("%s Uploading artifacts using MinIO uploader", ui.IconCheckMark))
+		meta = scraper.ExtractMinIOLoaderMeta(execution)
+		loader, err = scraper.NewMinIOLoader(
+			r.Params.Endpoint,
+			r.Params.AccessKeyID,
+			r.Params.SecretAccessKey,
+			r.Params.Location,
+			r.Params.Token,
+			r.Params.Bucket,
+			r.Params.Ssl,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	scraperV2 := scraper.NewScraperV2(extractor, loader)
+	if err = scraperV2.Scrape(ctx, meta); err != nil {
+		output.PrintLog(fmt.Sprintf("%s Error encountered while scraping artifacts", ui.IconCross))
+		return errors.Errorf("scrape artifacts error: %v", err)
+	}
+
+	return nil
 }
 
 func MapResultsToExecutionResults(out []byte, results parser.Results) (result testkube.ExecutionResult) {
