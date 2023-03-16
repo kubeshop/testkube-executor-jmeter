@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM justb4/jmeter
+FROM justb4/jmeter:5.5
 
 RUN apk --no-cache add ca-certificates git
 
