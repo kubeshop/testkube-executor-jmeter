@@ -11,7 +11,7 @@ ENV ENTRYPOINT_CMD="/entrypoint.sh"
 
 RUN cd cmd/agent;go build -o /runner -mod mod -a .
 
-FROM justb4/jmeter
+FROM justb4/jmeter:5.5
 
 RUN apk --no-cache add ca-certificates git
 
