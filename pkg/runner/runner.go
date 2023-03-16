@@ -3,10 +3,9 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
 	"os"
 	"path/filepath"
-
-	"github.com/kubeshop/testkube/pkg/executor/scraper/factory"
 
 	"github.com/pkg/errors"
 
@@ -148,10 +147,7 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	args = append(args, execution.Args...)
 	output.PrintLog(fmt.Sprintf("%s Using arguments: %v", ui.IconWorld, args))
 
-	mainCmd := "jmeter"
-	if key := os.Getenv("ENTRYPOINT_CMD"); key != "" {
-		mainCmd = key
-	}
+	mainCmd := getEntrypoint()
 	// run JMeter inside repo directory ignore execution error in case of failed test
 	out, err := executor.Run(runPath, mainCmd, envManager, args...)
 	if err != nil {
@@ -183,6 +179,17 @@ func (r *JMeterRunner) Run(execution testkube.Execution) (result testkube.Execut
 	}
 
 	return executionResult, nil
+}
+
+func getEntrypoint() (entrypoint string) {
+	if entrypoint = os.Getenv("ENTRYPOINT_CMD"); entrypoint != "" {
+		return entrypoint
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "."
+	}
+	return filepath.Join(wd, "scripts/entrypoint.sh")
 }
 
 func MapResultsToExecutionResults(out []byte, results parser.Results) (result testkube.ExecutionResult) {
