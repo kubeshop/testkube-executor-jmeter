@@ -7,11 +7,12 @@ COPY . .
 
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-ENV ENTRYPOINT_CMD="/executor_entrypoint.sh"
 
 RUN cd cmd/agent;go build -o /runner -mod mod -a .
 
 FROM justb4/jmeter:5.5
+
+ENV ENTRYPOINT_CMD="/executor_entrypoint.sh"
 
 RUN apk --no-cache add ca-certificates git
 
