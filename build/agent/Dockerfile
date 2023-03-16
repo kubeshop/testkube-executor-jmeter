@@ -7,7 +7,7 @@ COPY . .
 
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-ENV ENTRYPOINT_CMD="/entrypoint.sh"
+ENV ENTRYPOINT_CMD="/executor_entrypoint.sh"
 
 RUN cd cmd/agent;go build -o /runner -mod mod -a .
 
@@ -18,6 +18,7 @@ RUN apk --no-cache add ca-certificates git
 WORKDIR /root/
 
 COPY --from=0 /runner /bin/runner
+COPY scripts/entrypoint.sh /executor_entrypoint.sh
 ADD plugins/ ${JMETER_CUSTOM_PLUGINS_FOLDER}
 ADD lib/ ${JMETER_HOME}/lib/
 
