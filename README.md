@@ -1,3 +1,7 @@
+# DEPRECATED
+
+This repository is no longer supported, please consider using [Testkube](https://github.com/kubeshop/testkube) instead.
+
 ![Testkube Logo](https://raw.githubusercontent.com/kubeshop/testkube/main/assets/testkube-color-gray.png)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/kubeshop/testkube-executor-jmeter)](https://goreportcard.com/report/github.com/kubeshop/testkube-executor-jmeter)
